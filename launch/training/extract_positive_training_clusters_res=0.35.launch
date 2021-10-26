@@ -11,8 +11,8 @@ To check that you've selected the right clusters, play back the generated bagfil
 
    <!-- first rosbag file with positive examples -->
   <node pkg="leg_tracker" type="extract_positive_training_clusters" name="extract_positive_training_clusters1" output="screen">
-    <param name="load_bag_file" value="$(find leg_tracker)/training_samples/2021-10-25-09-55-01.bag"/>
-    <param name="save_bag_file" value="$(find leg_tracker)/training_samples/negative1.bag"/>
+    <param name="load_bag_file" value="$(find leg_tracker)/training_samples/2021-10-25-22-07-37.bag"/>
+    <param name="save_bag_file" value="$(find leg_tracker)/training_samples/negative2.bag"/>
     <param name="scan_topic" value="scan"/>
     <param name="laser_frame" value="laser"/>
     <param name="x_min" value ="-0.5"/> 

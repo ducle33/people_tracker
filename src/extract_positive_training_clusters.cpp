@@ -54,8 +54,8 @@ public:
       ROS_ERROR("Couldn't get laser_frame from ros param server");
 
     // Optional parameters (i.e., params with defaults)
-    nh_private.param("cluster_dist_euclid", cluster_dist_euclid_, 0.13);
-    nh_private.param("min_points_per_cluster", min_points_per_cluster_, 3);        
+    nh_private.param("cluster_dist_euclid", cluster_dist_euclid_, 0.1);
+    nh_private.param("min_points_per_cluster", min_points_per_cluster_, 5);        
     
     // Optional parameters - either the x-y coordinates of a bounding box can be specified 
     // or the min/max angle and length for an arc

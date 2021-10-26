@@ -3,7 +3,7 @@
 import rospy
 
 # Custom messages
-from leg_tracker.msg import Person, PersonArray, Leg, LegArray 
+from leg_tracker.msg import Person, PersonArray, Leg, LegArray, PoseWithCov, PoseWithCovArray
 
 # ROS messages
 from visualization_msgs.msg import Marker
@@ -94,6 +94,10 @@ class ObjectTracked:
         self.pos_y = y
         self.vel_x = 0
         self.vel_y = 0
+        self.pos_x_cov = 0
+        self.pos_y_cov = 0
+        self.vel_x_cov = 0
+        self.vel_y_cov = 0
 
         self.filtered_state_covariances = 0.5*np.eye(4) 
 
@@ -146,8 +150,23 @@ class ObjectTracked:
         self.pos_y = self.filtered_state_means[1]
         self.vel_x = self.filtered_state_means[2]
         self.vel_y = self.filtered_state_means[3]
-    
-
+        
+        if (math.sqrt(self.vel_x**2 + self.vel_y**2)) > 0.15:
+            yaw = math.atan2(self.vel_y, self.vel_x)
+            self.filtered_state_means[2] = 0.15*math.cos(yaw)
+            self.filtered_state_means[3] = 0.15*math.sin(yaw)
+            
+        if (self.vel_x < 0.03 or self.vel_y < 0.03):
+        	self.filtered_state_covariances[0][0] = self.filtered_state_covariances[0][0] + 0.1
+        	self.filtered_state_covariances[1][1] = self.filtered_state_covariances[1][1] + 0.1
+        	self.filtered_state_covariances[2][2] = self.filtered_state_covariances[2][2] + 0.1
+        	self.filtered_state_covariances[3][3] = self.filtered_state_covariances[3][3] + 0.1
+            
+        self.pos_x_cov = self.filtered_state_covariances[0][0]
+        self.pos_y_cov = self.filtered_state_covariances[1][1]
+        self.vel_x_cov = self.filtered_state_covariances[2][2]
+        self.vel_y_cov = self.filtered_state_covariances[3][3]
+        
 
 class KalmanMultiTracker:    
     """
@@ -173,26 +192,29 @@ class KalmanMultiTracker:
 
         # Get ROS params
         self.fixed_frame = rospy.get_param("fixed_frame", "odom")
-        self.max_leg_pairing_dist = rospy.get_param("max_leg_pairing_dist", 0.8)
-        self.confidence_threshold_to_maintain_track = rospy.get_param("confidence_threshold_to_maintain_track", 0.1)
+        self.max_leg_pairing_dist = rospy.get_param("max_leg_pairing_dist", 0.5)
+        self.confidence_threshold_to_maintain_track = rospy.get_param("confidence_threshold_to_maintain_track", 0.3)
         self.publish_occluded = rospy.get_param("publish_occluded", True)
         self.publish_people_frame = rospy.get_param("publish_people_frame", self.fixed_frame)
         self.use_scan_header_stamp_for_tfs = rospy.get_param("use_scan_header_stamp_for_tfs", False)
         self.publish_detected_people = rospy.get_param("display_detected_people", False)        
-        self.dist_travelled_together_to_initiate_leg_pair = rospy.get_param("dist_travelled_together_to_initiate_leg_pair", 0.5)
+        self.dist_travelled_together_to_initiate_leg_pair = rospy.get_param("dist_travelled_together_to_initiate_leg_pair", 0.1)
         scan_topic = rospy.get_param("scan_topic", "scan");
-        self.scan_frequency = rospy.get_param("scan_frequency", 7.5)
+        self.scan_frequency = rospy.get_param("scan_frequency", 10.0)
         self.in_free_space_threshold = rospy.get_param("in_free_space_threshold", 0.06)
         self.confidence_percentile = rospy.get_param("confidence_percentile", 0.90)
         self.max_std = rospy.get_param("max_std", 0.9)
 
         self.mahalanobis_dist_gate = scipy.stats.norm.ppf(1.0 - (1.0-self.confidence_percentile)/2., 0, 1.0)
-        self.max_cov = self.max_std**2
+        self.max_cov = self.max_std**2 - self.max_std**2 + 0.5
         self.latest_scan_header_stamp_with_tf_available = rospy.get_rostime()
 
     	# ROS publishers
         self.people_tracked_pub = rospy.Publisher('people_tracked', PersonArray, queue_size=300)
         self.people_detected_pub = rospy.Publisher('people_detected', PersonArray, queue_size=300)
+        
+        self.leg_pose_pub = rospy.Publisher('leg_pose', PoseWithCovArray, queue_size=300)
+        
         self.marker_pub = rospy.Publisher('visualization_marker', Marker, queue_size=300)
         self.non_leg_clusters_pub = rospy.Publisher('non_leg_clusters', LegArray, queue_size=300)
 
@@ -609,6 +631,10 @@ class KalmanMultiTracker:
         people_tracked_msg.header.stamp = now
         people_tracked_msg.header.frame_id = self.publish_people_frame        
         marker_id = 0
+        
+        pose_msg = PoseWithCovArray()
+        pose_msg.header.stamp = now
+        pose_msg.header.frame_id = self.publish_people_frame
 
         # Make sure we can get the required transform first:
         if self.use_scan_header_stamp_for_tfs:
@@ -653,6 +679,23 @@ class KalmanMultiTracker:
                         new_person.pose.orientation.w = quaternion[3] 
                         new_person.id = person.id_num 
                         people_tracked_msg.people.append(new_person)
+                        
+                        # publish to leg_pose topic
+                        new_pose = PoseWithCov() 
+                        new_pose.pose.position.x = ps.point.x 
+                        new_pose.pose.position.y = ps.point.y 
+                        yaw = math.atan2(person.vel_y, person.vel_x)
+                        quaternion = tf.transformations.quaternion_from_euler(0, 0, yaw)
+                        new_pose.pose.orientation.x = person.vel_x # vel_x
+                        new_pose.pose.orientation.y = person.vel_y # vel_y
+                        new_pose.pose.orientation.z = quaternion[2]
+                        new_pose.pose.orientation.w = quaternion[3] 
+                        new_pose.id = person.id_num
+                        new_pose.xCov = person.pos_x_cov
+                        new_pose.yCov = person.pos_y_cov
+                        new_pose.vxCov = person.vel_x_cov
+                        new_pose.vyCov = person.vel_y_cov
+                        pose_msg.poses.append(new_pose)
 
                         # publish rviz markers       
                         # Cylinder for body 
@@ -739,7 +782,51 @@ class KalmanMultiTracker:
                         marker.pose.position.z = 0.0
                         marker.id = marker_id 
                         marker_id += 1                    
-                        self.marker_pub.publish(marker)                
+                        self.marker_pub.publish(marker)    
+                        
+                        # Hall Model Visualization
+                        marker.pose.position.x = ps.point.x 
+                        marker.pose.position.y = ps.point.y                    
+                        marker.type = Marker.SPHERE
+                        marker.scale.x = 0.5
+                        marker.scale.y = 0.5
+                        marker.scale.z = 0.02   
+                        marker.color.r = 0.75
+                        marker.color.g = 0
+                        marker.color.b = 0            
+                        marker.color.a = 0.9
+                        marker.pose.position.z = 0.0
+                        marker.id = marker_id 
+                        marker_id += 1                    
+                        self.marker_pub.publish(marker)
+                        marker.pose.position.x = ps.point.x 
+                        marker.pose.position.y = ps.point.y                    
+                        marker.type = Marker.SPHERE
+                        marker.scale.x = 1
+                        marker.scale.y = 1
+                        marker.scale.z = 0.01   
+                        marker.color.r = 0.15
+                        marker.color.g = 0.5
+                        marker.color.b = 0
+                        marker.color.a = 0.5
+                        marker.pose.position.z = 0.0
+                        marker.id = marker_id 
+                        marker_id += 1                    
+                        self.marker_pub.publish(marker)   
+                        marker.pose.position.x = ps.point.x 
+                        marker.pose.position.y = ps.point.y                    
+                        marker.type = Marker.SPHERE
+                        marker.scale.x = 4
+                        marker.scale.y = 4
+                        marker.scale.z = 0.01   
+                        marker.color.r = 0.15
+                        marker.color.g = 0.5
+                        marker.color.b = 0            
+                        marker.color.a = 0.2
+                        marker.pose.position.z = 0.0
+                        marker.id = marker_id 
+                        marker_id += 1
+                        self.marker_pub.publish(marker)             
 
         # Clear previously published people markers
         for m_id in xrange(marker_id, self.prev_person_marker_id):
@@ -753,7 +840,10 @@ class KalmanMultiTracker:
         self.prev_person_marker_id = marker_id          
 
         # Publish people tracked message
-        self.people_tracked_pub.publish(people_tracked_msg)            
+        self.people_tracked_pub.publish(people_tracked_msg)
+        
+        # Publish leg_pose message
+        self.leg_pose_pub.publish(pose_msg)            
 
 
 if __name__ == '__main__':

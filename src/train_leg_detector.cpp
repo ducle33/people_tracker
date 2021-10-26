@@ -68,8 +68,8 @@ public:
     feat_count_(0)
   {
     // Get ROS params (all have default values so it's not critical we get them all)
-    nh.param("cluster_dist_euclid", cluster_dist_euclid_, 0.13);
-    nh.param("min_points_per_cluster", min_points_per_cluster_, 3);
+    nh.param("cluster_dist_euclid", cluster_dist_euclid_, 0.1);
+    nh.param("min_points_per_cluster", min_points_per_cluster_, 5);
     nh.param("undersample_negative_factor", undersample_negative_factor_, 50);
     nh.param("positive_leg_cluster_positions_topic", positive_leg_cluster_positions_topic_, std::string("/leg_cluster_positions"));
 

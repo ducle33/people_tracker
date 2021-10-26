@@ -27,6 +27,8 @@ add_message_files(
   PersonArray.msg
   Leg.msg
   LegArray.msg
+  PoseWithCov.msg
+  PoseWithCovArray.msg
 )
 
 generate_messages(   
