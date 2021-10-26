@@ -12,6 +12,14 @@
 
   <!-- run joint_leg_tracker -->
   <node pkg="leg_tracker" type="joint_leg_tracker.py" name="joint_leg_tracker" output="screen"/>
+
+  <!-- run YoloToLegArray -->
+  <node pkg="leg_tracker" type="YoloToLegArray.py" name="YoloToLegArray" output="screen"/>
+
+  <!-- run joint_leg_tracker -->
+  <node pkg="leg_tracker" type="yolo_tracker.py" name="yolo_tracker" output="screen"/>
+
+
  
    <!-- run local_occupancy_grid_mapping -->
   <node pkg="leg_tracker" type="local_occupancy_grid_mapping" name="local_occupancy_grid_mapping" output="screen"/> 
