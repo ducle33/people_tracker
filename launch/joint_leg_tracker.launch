@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <launch>
   <!-- params -->
-  <param name="forest_file" value="$(find leg_tracker)/config/trained_leg_detector_res=0.35_outside.yaml" />
+  <param name="forest_file" value="$(find leg_tracker)/config/trained_leg_detector_res=0.35_outside2.yaml" />
   <param name="scan_topic" value="/scan" />
   <param name="fixed_frame" value="/laser"/>
   <param name="scan_frequency" value="10"/>  
@@ -14,10 +14,16 @@
   <node pkg="leg_tracker" type="joint_leg_tracker.py" name="joint_leg_tracker" output="screen"/>
 
   <!-- run YoloToLegArray -->
-  <node pkg="leg_tracker" type="YoloToLegArray.py" name="YoloToLegArray" output="screen"/>
+  <!--<node pkg="leg_tracker" type="YoloToLegArray.py" name="YoloToLegArray" output="screen"/>-->
 
   <!-- run joint_leg_tracker -->
-  <node pkg="leg_tracker" type="yolo_tracker.py" name="yolo_tracker" output="screen"/>
+  <!--<node pkg="leg_tracker" type="yolo_tracker.py" name="yolo_tracker" output="screen"/>-->
+
+  <!-- run joint_leg_tracker -->
+  <node pkg="leg_tracker" type="sensor_integrate2.py" name="sensor_integrate2" output="screen"/>
+
+  <!-- run joint_leg_tracker -->
+  <!--<node pkg="leg_tracker" type="people_tracker.py" name="people_tracker" output="screen"/>-->
 
 
  

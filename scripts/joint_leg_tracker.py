@@ -100,7 +100,7 @@ class ObjectTracked:
         self.vel_y_cov = 0
 
         self.filtered_state_covariances = 0.5*np.eye(4) 
-
+        
         # Constant velocity motion model
         transition_matrix = np.array([[1, 0, delta_t,        0],
                                       [0, 1,       0,  delta_t],
@@ -108,7 +108,7 @@ class ObjectTracked:
                                       [0, 0,       0,        1]])
 
         # Oberservation model. Can observe pos_x and pos_y (unless person is occluded). 
-        observation_matrix = np.array([[1, 0, 0, 0],
+        self.observation_matrix = np.array([[1, 0, 0, 0],
                                        [0, 1, 0, 0]])
 
         transition_covariance = np.array([[var_pos,       0,       0,       0],
@@ -120,7 +120,7 @@ class ObjectTracked:
 
         self.kf = KalmanFilter(
             transition_matrices=transition_matrix,
-            observation_matrices=observation_matrix,
+            observation_matrices=self.observation_matrix,
             transition_covariance=transition_covariance,
             observation_covariance=observation_covariance,
         )
@@ -151,22 +151,19 @@ class ObjectTracked:
         self.vel_x = self.filtered_state_means[2]
         self.vel_y = self.filtered_state_means[3]
         
+        
         if (math.sqrt(self.vel_x**2 + self.vel_y**2)) > 0.15:
             yaw = math.atan2(self.vel_y, self.vel_x)
             self.filtered_state_means[2] = 0.15*math.cos(yaw)
             self.filtered_state_means[3] = 0.15*math.sin(yaw)
-            
-        if (self.vel_x < 0.03 or self.vel_y < 0.03):
-        	self.filtered_state_covariances[0][0] = self.filtered_state_covariances[0][0] + 0.1
-        	self.filtered_state_covariances[1][1] = self.filtered_state_covariances[1][1] + 0.1
-        	self.filtered_state_covariances[2][2] = self.filtered_state_covariances[2][2] + 0.1
-        	self.filtered_state_covariances[3][3] = self.filtered_state_covariances[3][3] + 0.1
-            
+
+        
         self.pos_x_cov = self.filtered_state_covariances[0][0]
         self.pos_y_cov = self.filtered_state_covariances[1][1]
         self.vel_x_cov = self.filtered_state_covariances[2][2]
         self.vel_y_cov = self.filtered_state_covariances[3][3]
-        
+    
+
 
 class KalmanMultiTracker:    
     """
@@ -193,34 +190,36 @@ class KalmanMultiTracker:
         # Get ROS params
         self.fixed_frame = rospy.get_param("fixed_frame", "odom")
         self.max_leg_pairing_dist = rospy.get_param("max_leg_pairing_dist", 0.5)
-        self.confidence_threshold_to_maintain_track = rospy.get_param("confidence_threshold_to_maintain_track", 0.3)
+        self.confidence_threshold_to_maintain_track = rospy.get_param("confidence_threshold_to_maintain_track", 0.5)
         self.publish_occluded = rospy.get_param("publish_occluded", True)
         self.publish_people_frame = rospy.get_param("publish_people_frame", self.fixed_frame)
         self.use_scan_header_stamp_for_tfs = rospy.get_param("use_scan_header_stamp_for_tfs", False)
         self.publish_detected_people = rospy.get_param("display_detected_people", False)        
-        self.dist_travelled_together_to_initiate_leg_pair = rospy.get_param("dist_travelled_together_to_initiate_leg_pair", 0.1)
+        self.dist_travelled_together_to_initiate_leg_pair = rospy.get_param("dist_travelled_together_to_initiate_leg_pair", 0.5)
         scan_topic = rospy.get_param("scan_topic", "scan");
         self.scan_frequency = rospy.get_param("scan_frequency", 10.0)
         self.in_free_space_threshold = rospy.get_param("in_free_space_threshold", 0.06)
-        self.confidence_percentile = rospy.get_param("confidence_percentile", 0.90)
+        self.confidence_percentile = rospy.get_param("confidence_percentile", 0.9)
         self.max_std = rospy.get_param("max_std", 0.9)
 
         self.mahalanobis_dist_gate = scipy.stats.norm.ppf(1.0 - (1.0-self.confidence_percentile)/2., 0, 1.0)
-        self.max_cov = self.max_std**2 - self.max_std**2 + 0.5
+        self.max_cov = self.max_std**2
         self.latest_scan_header_stamp_with_tf_available = rospy.get_rostime()
-
-    	# ROS publishers
-        self.people_tracked_pub = rospy.Publisher('people_tracked', PersonArray, queue_size=300)
-        self.people_detected_pub = rospy.Publisher('people_detected', PersonArray, queue_size=300)
-        
-        self.leg_pose_pub = rospy.Publisher('leg_pose', PoseWithCovArray, queue_size=300)
-        
-        self.marker_pub = rospy.Publisher('visualization_marker', Marker, queue_size=300)
-        self.non_leg_clusters_pub = rospy.Publisher('non_leg_clusters', LegArray, queue_size=300)
 
         # ROS subscribers         
         self.detected_clusters_sub = rospy.Subscriber('detected_leg_clusters', LegArray, self.detected_clusters_callback)      
         self.local_map_sub = rospy.Subscriber('local_map', OccupancyGrid, self.local_map_callback)
+
+    	# ROS publishers
+        self.people_tracked_pub = rospy.Publisher('people_tracked', PersonArray, queue_size=1000)
+        self.people_detected_pub = rospy.Publisher('people_detected', PersonArray, queue_size=1000)
+        
+        self.leg_pose_pub = rospy.Publisher('leg_pose', PoseWithCovArray, queue_size=1000)
+        
+        self.marker_pub = rospy.Publisher('visualization_marker', Marker, queue_size=1000)
+        self.marker_pub_ppl = rospy.Publisher('ppl_marker', Marker, queue_size=1000)
+        self.non_leg_clusters_pub = rospy.Publisher('non_leg_clusters', LegArray, queue_size=1000)
+
 
         rospy.spin() # So the node doesn't immediately shut down
                     
@@ -514,7 +513,6 @@ class KalmanMultiTracker:
             self.potential_leg_pairs.remove(leg_pair)
 
         # Publish to rviz and /people_tracked topic.
-        self.publish_tracked_objects(now)
         self.publish_tracked_people(now)
             
 
@@ -610,6 +608,8 @@ class KalmanMultiTracker:
                     # marker_id += 1                    
                     # self.marker_pub.publish(marker)
 
+                      
+
             # Clear previously published track markers
             for m_id in xrange(marker_id, self.prev_track_marker_id):
                 marker = Marker()
@@ -629,12 +629,12 @@ class KalmanMultiTracker:
         """        
         people_tracked_msg = PersonArray()
         people_tracked_msg.header.stamp = now
-        people_tracked_msg.header.frame_id = self.publish_people_frame        
-        marker_id = 0
+        people_tracked_msg.header.frame_id = self.publish_people_frame
         
         pose_msg = PoseWithCovArray()
         pose_msg.header.stamp = now
-        pose_msg.header.frame_id = self.publish_people_frame
+        pose_msg.header.frame_id = self.publish_people_frame        
+        marker_id = 0
 
         # Make sure we can get the required transform first:
         if self.use_scan_header_stamp_for_tfs:
@@ -696,6 +696,7 @@ class KalmanMultiTracker:
                         new_pose.vxCov = person.vel_x_cov
                         new_pose.vyCov = person.vel_y_cov
                         pose_msg.poses.append(new_pose)
+                        
 
                         # publish rviz markers       
                         # Cylinder for body 
@@ -826,7 +827,7 @@ class KalmanMultiTracker:
                         marker.pose.position.z = 0.0
                         marker.id = marker_id 
                         marker_id += 1
-                        self.marker_pub.publish(marker)             
+                        self.marker_pub.publish(marker)           
 
         # Clear previously published people markers
         for m_id in xrange(marker_id, self.prev_person_marker_id):
@@ -837,13 +838,23 @@ class KalmanMultiTracker:
             marker.id = m_id
             marker.action = marker.DELETE   
             self.marker_pub.publish(marker)
-        self.prev_person_marker_id = marker_id          
+        self.prev_person_marker_id = marker_id 
+  
+	for m_id in xrange(marker_id, self.prev_person_marker_id):
+            marker = Marker()
+            marker.header.stamp = now                
+            marker.header.frame_id = self.publish_people_frame
+            marker.ns = "People_tracked"
+            marker.id = m_id
+            marker.action = marker.DELETE
+	    self.marker_pub_ppl.publish(marker)
+        self.prev_person_marker_id = marker_id        
 
         # Publish people tracked message
-        self.people_tracked_pub.publish(people_tracked_msg)
+        self.people_tracked_pub.publish(people_tracked_msg) 
         
         # Publish leg_pose message
-        self.leg_pose_pub.publish(pose_msg)            
+        self.leg_pose_pub.publish(pose_msg)           
 
 
 if __name__ == '__main__':
