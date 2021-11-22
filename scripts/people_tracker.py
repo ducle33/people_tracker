@@ -206,9 +206,9 @@ class KalmanMultiTracker:
         self.latest_scan_header_stamp_with_tf_available = rospy.get_rostime()
 
     	# ROS publishers
-        self.people_pose_pub = rospy.Publisher('people_pose', PoseWithCovArray, queue_size=1000)
+        self.people_pose_pub = rospy.Publisher('people_pose', PoseWithCovArray, queue_size=100)
         
-        self.marker_pub = rospy.Publisher('people_pose_marker', Marker, queue_size=1000)
+        self.marker_pub = rospy.Publisher('people_pose_marker', Marker, queue_size=100)
 
         # ROS subscribers         
         self.detected_clusters_sub = rospy.Subscriber('people_tracking', PoseWithCovArray, self.detected_clusters_callback)

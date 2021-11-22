@@ -3,7 +3,7 @@
 import rospy
 
 # Custom messages
-from leg_tracker.msg import Person, PersonArray, Leg, LegArray, PoseWithCov, PoseWithCovArray 
+from leg_tracker.msg import Person, PersonArray, Leg, LegArray, PoseWithCov, PoseWithCovArray
 
 # ROS messages
 from visualization_msgs.msg import Marker
@@ -52,7 +52,7 @@ class ObjectTracked:
     def __init__(self, x, y, now, confidence, is_person, in_free_space): 
         """
         Constructor
-        """        
+        """
         self.id_num = ObjectTracked.new_leg_id_num
         ObjectTracked.new_leg_id_num += 1
         self.colour = (random.random(), random.random(), random.random())

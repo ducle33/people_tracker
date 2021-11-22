@@ -3,10 +3,12 @@
 <!-- Not shown, but you can also include test bags to get a testing error!-->
 <launch>
 	
-  <arg name="save_file" value="$(find leg_tracker)/config/trained_leg_detector_res=0.35_outside2.yaml" />
+  <arg name="save_file" value="$(find leg_tracker)/config/trained_leg_detector_res=0.35_outside4.yaml" />
 
   <arg name="pos_bag_1" value="$(find leg_tracker)/training_samples/positive1.bag" />
   <arg name="pos_bag_2" value="$(find leg_tracker)/training_samples/positive2.bag" />
+  <arg name="pos_bag_3" value="$(find leg_tracker)/training_samples/positive3.bag" />
+  <arg name="pos_bag_4" value="$(find leg_tracker)/training_samples/positive4.bag" />
   <arg name="neg_bag_1" value="$(find leg_tracker)/training_samples/negative1.bag" />
   <arg name="neg_bag_2" value="$(find leg_tracker)/training_samples/negative2.bag" />
   <arg name="neg_bag_3" value="$(find leg_tracker)/training_samples/negative3.bag" />
@@ -15,7 +17,9 @@
 
   <node pkg="leg_tracker" type="train_leg_detector" name="train_leg_detector" required="true"
         args="--pos $(arg pos_bag_1) $(arg pos_scan_topic) 
-              --pos $(arg pos_bag_2) $(arg pos_scan_topic)             
+              --pos $(arg pos_bag_2) $(arg pos_scan_topic)   
+              --pos $(arg pos_bag_3) $(arg pos_scan_topic)   
+              --pos $(arg pos_bag_4) $(arg pos_scan_topic)          
               --neg $(arg neg_bag_1) $(arg neg_scan_topic)             
               --neg $(arg neg_bag_2) $(arg neg_scan_topic)
               --neg $(arg neg_bag_3) $(arg neg_scan_topic)

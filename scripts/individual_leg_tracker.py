@@ -17,7 +17,6 @@ import copy
 import timeit
 import sys
 
-
 class DetectedCluster:
     """
     A detected scan cluster. Not yet associated to an existing track.
@@ -25,7 +24,7 @@ class DetectedCluster:
     def __init__(self, pos_x, pos_y, confidence):
         """
         Constructor
-        """        
+        """
         self.pos_x = pos_x
         self.pos_y = pos_y
         self.confidence = confidence
@@ -33,7 +32,7 @@ class DetectedCluster:
 
 class TrackedPerson:
     """
-    A tracked person 
+    A tracked person
     """
     new_person_id_num = 1
 

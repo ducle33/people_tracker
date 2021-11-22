@@ -11,14 +11,14 @@ To check that you've selected the right clusters, play back the generated bagfil
 
    <!-- first rosbag file with positive examples -->
   <node pkg="leg_tracker" type="extract_positive_training_clusters" name="extract_positive_training_clusters1" output="screen">
-    <param name="load_bag_file" value="$(find leg_tracker)/training_samples/2021-10-26-04-39-56.bag"/>
-    <param name="save_bag_file" value="$(find leg_tracker)/training_samples/negative3.bag"/>
+    <param name="load_bag_file" value="$(find leg_tracker)/training_samples/2021-11-13-02-59-41.bag"/>
+    <param name="save_bag_file" value="$(find leg_tracker)/training_samples/positive4.bag"/>
     <param name="scan_topic" value="scan"/>
     <param name="laser_frame" value="laser"/>
-    <param name="x_min" value ="-0.5"/> 
+    <param name="x_min" value ="2.0"/> 
     <param name="x_max" value ="5.0"/> 
-    <param name="y_min" value ="-3.0"/> 
-    <param name="y_max" value ="3.0"/> 
+    <param name="y_min" value ="-0.5"/> 
+    <param name="y_max" value ="0.5"/> 
   </node>       
 
 
@@ -33,6 +33,10 @@ To check that you've selected the right clusters, play back the generated bagfil
     <param name="x_max" value ="5.0"/> 
     <param name="y_min" value ="-0.5"/> 
     <param name="y_max" value ="1.5"/>
+    <param name="x_min" value ="-0.5"/> 
+    <param name="x_max" value ="5.0"/> 
+    <param name="y_min" value ="-3.0"/> 
+    <param name="y_max" value ="3.0"/> 
     <param name="min_angle" value="-15"/> 
     <param name="max_angle" value="15"/> 
     <param name="max_dist" value="5"/> 

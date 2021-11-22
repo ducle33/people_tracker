@@ -11,15 +11,14 @@ from darknet_ros_msgs.msg import BoundingBoxes, BoundingBox
 import math
 import tf
 
-
 class people_from_yolo(object):
     def __init__(self):
         rospy.init_node('people_from_yolov3', anonymous=True)
         rospy.Subscriber('/darknet_ros/bounding_boxes', BoundingBoxes, self.callback_yolo)
-        rospy.Subscriber('detect_leg_clusters', LegArray, self.callback_leg)
+        #rospy.Subscriber('detected_leg_clusters', LegArray, self.callback_leg)
 
 
-        self.pub_clusters = rospy.Publisher('detected_clusters', LegArray, queue_size = 1000)
+        self.pub_clusters = rospy.Publisher('detected_leg_clusters', LegArray, queue_size = 1000)
 	self.pub_people_pose = rospy.Publisher('people_pose', PoseArray, queue_size = 1000)
 	self.legArray = LegArray()
         
@@ -55,44 +54,48 @@ class people_from_yolo(object):
 
         count = 0
         for i in my_list:
+        
+            if not math.isnan(i.Z) and not math.isnan(i.X):
             
-            self.peoplePose.poses[count].position.x = i.Z + 0
-            self.peoplePose.poses[count].position.y = - i.X + 0.25
-            self.peoplePose.poses[count].position.z = 0
-            
-            yoloTracked.legs[count].position.x = i.Z + 0
-            yoloTracked.legs[count].position.y = - i.X + 0.25
-            yoloTracked.legs[count].position.z = 0
-            yoloTracked.legs[count].confidence = 0.99
-            
-            yoloTracked.legs.append(yoloTracked.legs[count])
-            
-            count = count + 1
-                
-            count_angle = 0
-            
-            for i in my_list:
-                self.peoplePose.poses[count_angle].orientation.x = 0
-                self.peoplePose.poses[count_angle].orientation.y = 0
-                self.peoplePose.poses[count_angle].orientation.z = 1
-                self.peoplePose.poses[count_angle].orientation.w = 0
-                
-                count_angle = count_angle + 1  
+		        self.peoplePose.poses[count].position.x = i.Z + 0
+		        self.peoplePose.poses[count].position.y = - i.X + 0.25
+		        self.peoplePose.poses[count].position.z = 0
+		        
+		        yoloTracked.legs[count].position.x = i.Z + 0
+		        yoloTracked.legs[count].position.y = - i.X + 0.25
+		        yoloTracked.legs[count].position.z = 0
+		        yoloTracked.legs[count].confidence = 0.99
+		        
+		        yoloTracked.legs.append(yoloTracked.legs[count])
+		        
+		        count = count + 1
+		            
+		        count_angle = 0
+		        
+		        for i in my_list:
+		            self.peoplePose.poses[count_angle].orientation.x = 0
+		            self.peoplePose.poses[count_angle].orientation.y = 0
+		            self.peoplePose.poses[count_angle].orientation.z = 1
+		            self.peoplePose.poses[count_angle].orientation.w = 0
+		            
+		            count_angle = count_angle + 1  
 
 
+        count_result = 0
         for i in range(len(yoloTracked.legs)):
             clusters = LegArray()
-            clusters.header = self.legArray.header
+            clusters.header = yoloTracked.header
             min_dist = 0.05
-            count_result = 0
-            for j in range(len(self.legArray.legs)):
+            clusters.legs.append(yoloTracked.legs[i])
+            clusters.legs.append(yoloTracked.legs[i])
+            count_result = count_result + 1
+            '''for j in range(len(self.legArray.legs)):
                 if (yoloTracked.legs[i].position.x != 0 and yoloTracked.legs[i].position.y != 0): 
              
-                    if math.sqrt((yoloTracked.legs[i].position.x - self.legArray.legs[j].position.x)**2 + (yoloTracked.legs[i].position.y - self.legArray.legs[j].position.y)**2) > min_dist:
-                    	clusters.legs.append(yoloTracked.legs[i])
-                    	count_result = count_result + 1
+                    if math.sqrt((yoloTracked.legs[i].position.x - self.legArray.legs[j].position.x)**2 + (yoloTracked.legs[i].position.y - self.legArray.legs[j].position.y)**2) > min_dist:'''
 
-        if len(clusters.legs) > 0:
+
+        if count_result:
             self.pub_clusters.publish(clusters)
             
         self.pub_people_pose.publish(self.peoplePose)
